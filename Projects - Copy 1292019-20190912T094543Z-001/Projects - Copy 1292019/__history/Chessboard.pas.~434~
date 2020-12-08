@@ -1,0 +1,1108 @@
+unit Chessboard;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.StdCtrls,
+  Vcl.Imaging.jpeg, System.ImageList, Vcl.ImgList, Vcl.WinXPanels, System.Generics.Collections,
+  Vcl.Imaging.pngimage, Data.FMTBcd, Data.DB, Data.SqlExpr, SyncObjs, Vcl.MPlayer,
+  Data.DbxSqlite, ChooseToken;
+
+type
+  TMainThread = class(TThread)
+  private
+    waitResult: TWaitResult;
+    procedure NextPlayer;
+    procedure CheckCurrPos;
+    procedure CheckBankrupt;
+    procedure Chance;
+    procedure Community;
+    procedure CheckJail;
+    procedure EndGame;
+  //  constructor Create;
+  public
+    SignalRoll, SignalStat: TEvent;
+    procedure Execute; override;
+  end;
+
+  TForm2 = class(TForm)
+    Image1: TImage;
+    Panel1: TPanel;
+    Panel2: TPanel;
+    Panel3: TPanel;
+    Button2: TButton;
+    Button3: TButton;
+    Panel4: TPanel;
+    Panel5: TPanel;
+    Label1: TLabel;
+    StatList: TListBox;
+    Label2: TLabel;
+    ListBox2: TListBox;
+    Label3: TLabel;
+    Label4: TLabel;
+    Label5: TLabel;
+    Label6: TLabel;
+    Panel6: TPanel;
+    ImageList1: TImageList;
+    StackPanel1: TStackPanel;
+    StackPanel2: TStackPanel;
+    StackPanel3: TStackPanel;
+    StackPanel4: TStackPanel;
+    StackPanel5: TStackPanel;
+    StackPanel6: TStackPanel;
+    StackPanel7: TStackPanel;
+    StackPanel8: TStackPanel;
+    StackPanel9: TStackPanel;
+    StackPanel10: TStackPanel;
+    StackPanel11: TStackPanel;
+    StackPanel12: TStackPanel;
+    StackPanel13: TStackPanel;
+    StackPanel14: TStackPanel;
+    StackPanel15: TStackPanel;
+    StackPanel16: TStackPanel;
+    StackPanel17: TStackPanel;
+    StackPanel18: TStackPanel;
+    StackPanel19: TStackPanel;
+    StackPanel20: TStackPanel;
+    StackPanel21: TStackPanel;
+    StackPanel22: TStackPanel;
+    StackPanel23: TStackPanel;
+    StackPanel24: TStackPanel;
+    StackPanel25: TStackPanel;
+    StackPanel26: TStackPanel;
+    StackPanel27: TStackPanel;
+    StackPanel28: TStackPanel;
+    StackPanel29: TStackPanel;
+    StackPanel30: TStackPanel;
+    StackPanel31: TStackPanel;
+    StackPanel32: TStackPanel;
+    StackPanel33: TStackPanel;
+    StackPanel34: TStackPanel;
+    StackPanel35: TStackPanel;
+    StackPanel36: TStackPanel;
+    StackPanel37: TStackPanel;
+    StackPanel38: TStackPanel;
+    StackPanel39: TStackPanel;
+    StackPanel40: TStackPanel;
+    Image2: TImage;
+    Image3: TImage;
+    Button4: TButton;
+    Image4: TImage;
+    Image5: TImage;
+    Image6: TImage;
+    Image7: TImage;
+    PlayNumPanel: TPanel;
+    CashPanel: TPanel;
+    SQLConnection1: TSQLConnection;
+    SQLQuery1: TSQLQuery;
+    Panel7: TPanel;
+    ChanImage: TImage;
+    CommImage: TImage;
+    GOOJImage: TImage;
+    SellButton: TButton;
+    MortgageButton: TButton;
+    StackPanel42: TStackPanel;
+    StackPanel43: TStackPanel;
+    StackPanel44: TStackPanel;
+    StackPanel45: TStackPanel;
+    StackPanel46: TStackPanel;
+    StackPanel47: TStackPanel;
+    StackPanel48: TStackPanel;
+    StackPanel49: TStackPanel;
+    StackPanel50: TStackPanel;
+    StackPanel51: TStackPanel;
+    StackPanel52: TStackPanel;
+    StackPanel53: TStackPanel;
+    StackPanel54: TStackPanel;
+    StackPanel55: TStackPanel;
+    StackPanel56: TStackPanel;
+    StackPanel57: TStackPanel;
+    StackPanel58: TStackPanel;
+    StackPanel59: TStackPanel;
+    StackPanel60: TStackPanel;
+    StackPanel61: TStackPanel;
+    StackPanel62: TStackPanel;
+    StackPanel63: TStackPanel;
+    StackPanel41: TStackPanel;
+    procedure Button4Click(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure SellButtonClick(Sender: TObject);
+    procedure MortgageButtonClick(Sender: TObject);
+    procedure YesClick(parameter: TObject);
+    procedure NoClick(parameter: TObject);
+    procedure AllClick(parameter: TObject);
+    procedure ChanImageClick(Sender: TObject);
+    procedure CommImageClick(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+  PlayRec = record
+    Position: Integer;
+    Assets: TStrings;
+    Cash: Integer;
+    Jail: Boolean;
+    gooj: Boolean
+  end;
+
+  PlayArr = array[1..4] of PlayRec;
+
+var
+  Form2: TForm2;
+
+  MainThread: TMainThread;
+
+  CustomDlg: TForm;
+
+  Squares, Land: TObjectList<TStackPanel>;
+  Tokens: TObjectList<TImage>;
+  Player: PlayArr;
+
+  RollHandle: THandle;
+
+  Chan: array[0..15] of Integer;
+  Comm: array[0..16] of Integer;
+  LoadedArr: array of Integer;
+
+  chahead, chatail, comhead, comtail, Target: Integer;
+  re1, re2, head, tail, CurrPlay, I, J: Integer;
+  PlayNumStr, CashStr, PosStr: ShortString;
+  MsgStr, Query: String;
+  Bankruptcy, ChanceActive, First: Boolean;
+  RollSignaled, ChanClicked, CommClicked, JailPassed: Boolean;
+
+implementation
+
+{$R *.dfm}
+
+procedure swap(x, y : integer);
+var t: integer;
+begin
+  t := x;
+  x := y;
+  y := t
+end;
+
+procedure Permute(var c: array of integer);    //shuffles a deck
+var i, count: integer;
+begin
+  count := length(c);
+  for i := 0 to (count - 2) do
+    swap(c[i], c[random(count - i)])  //randomly swap the elements in the list
+end;
+
+procedure ChanceInit(var c: array of integer; var head, tail: Integer);
+var i: integer;
+begin
+  head := 0;    //places the initial head and tail of the deck, which is a circular queue
+  tail := 15;
+  for i := 0 to 15 do   //creates the deck
+    c[i] := i;
+  Permute(c)   //shuffles the deck
+end;
+
+procedure CommunInit(var h: array of integer; var head, tail: Integer);
+var I: Integer;
+begin
+  head := 0;
+  tail := 16;
+  for I := 0 to 16 do
+    h[I] := I;
+  Permute(h)
+end;
+
+procedure Buy(N, Ind: String; P: Integer);
+var
+  l: Integer; PlayStr, TStr, PStr: String;
+begin
+  str(P, TStr);
+  MsgStr := 'Would you like to buy '+N+' for $'+TStr+'?';
+  if MessageDlg(MsgStr, mtInformation, [mbYes, mbNo], 0, mbYes) = mrYes then
+  begin
+    Player[CurrPlay].Cash := Player[CurrPlay].Cash - P;
+    Player[CurrPlay].Assets.Add(N);
+
+    str(CurrPlay, PlayStr);
+    Query := 'UPDATE PROPERTY SET OWNER='+PlayStr+' WHERE PROPIN='''+Ind+'''';
+    Form2.SQLQuery1.SQL.Text := Query;
+    Form2.SQLQuery1.ExecSQL;
+
+    str(P, PStr);
+    Form2.StatList.Items.Add('Player '+PlayStr+' bought '+N+' for $'+PStr+'.');
+  end;
+end;
+
+procedure AddHouse(qry: TSQLQuery; PType: String);
+var TempStr: String; NewHouse: TImage; LandIn: Integer;
+begin
+  MsgStr := 'Would you like to add a '+PType+' to '+qry.FieldByName('Name').AsString+'?';
+  if MessageDlg(MsgStr, mtInformation, [mbYes, mbNo], 0, mbYes) = mrYes then
+  begin
+    str(qry.FieldByName('Houses').AsInteger+1, TempStr);
+    Query := 'UPDATE PROPERTY SET HOUSES='+TempStr+' WHERE PROPIN='+qry.FieldByName('PropIn').AsString;
+    Form2.SQLQuery1.SQL.Text := Query;
+    Form2.SQLQuery1.ExecSQL();
+
+    LandIn := qry.FieldByName('LandIn').AsInteger;
+    NewHouse := TImage.Create(Land[LandIn]);
+    NewHouse.Parent := Land[LandIn];
+    NewHouse.Width := 12;
+    NewHouse.Height := 12;
+    NewHouse.Picture.Bitmap.Create;
+
+    if PType = 'house' then
+      NewHouse.Picture.Bitmap.LoadFromFile(GetCurrentDir+'HouseToken.png')
+    else
+      NewHouse.Picture.Bitmap.LoadFromFile(GetCurrentDir+'HotelToken.png');
+  end;
+end;
+
+procedure Rent(qry: TSQLQuery);
+var Owner, RentAmount: Integer; OwnerStr, RentStr, PlayerStr: String;
+begin
+  Owner := qry.FieldByName('Owner').AsInteger;
+
+  case qry.FieldByName('Houses').AsInteger of
+    0: RentAmount := qry.FieldByName('Rent').AsInteger;
+    1: RentAmount := qry.FieldByName('RentA').AsInteger;
+    2: RentAmount := qry.FieldByName('RentB').AsInteger;
+    3: RentAmount := qry.FieldByName('RentC').AsInteger;
+    4: RentAmount := qry.FieldByName('RentD').AsInteger;
+    5: RentAmount := qry.FieldByName('RentE').AsInteger;
+  end;
+
+  str(Owner, OwnerStr);
+  str(RentAmount, Rentstr);
+  str(CurrPlay, PlayerStr);
+
+  MsgStr := 'This land belongs to Player '+OwnerStr+'. Pay rent of $'+RentStr+'.';
+
+  if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+  begin
+    Player[CurrPlay].Cash := Player[CurrPlay].Cash - RentAmount;
+    Player[Owner].Cash := Player[Owner].Cash + RentAmount;
+
+    Form2.StatList.Items.Add('Player '+PlayerStr+' paid $'+RentStr+' of rent to Player '+OwnerStr+'.');
+  end;
+end;
+
+procedure Rail(qry: TSQLQuery);
+begin
+  if qry.FieldByName('Owner').AsInteger = null then
+  begin
+    MsgStr := 'Do you want to buy '+qry.FieldByName('Name').AsString+'?';
+    if MessageDlg(MsgStr, mtInformation, [mbYes, mbNo], 0, mbYes) = mrYes then
+    begin
+
+    end;
+  end
+  else if qry.FieldByName('Owner').AsInteger = CurrPlay then
+  begin
+    Form2.Panel7.Caption := 'You own this station. No action is done';
+  end
+  else
+  begin
+
+  end;
+
+end;
+
+procedure Utility(qry: TSQLQuery);
+begin
+  if qry.FieldByName('Owner').AsInteger = 0 then
+  begin
+    MsgStr := 'Would you like to buy '+qry.FieldByName('Name').AsString+' for $'+qry.FieldByName('Price').AsString+'?';
+    if MessageDlg(MsgStr, mtInformation, [mbYes, mbNo], 0, mbYes) = mrYes then
+
+  end;
+end;
+
+procedure TempArrCompare(c: Integer; var a, p: array of Integer; var l: array of Integer);
+var
+  TempHead: Integer;
+begin
+  for I := 1 to 4 do
+    a[I] := I;
+  for I := 1 to 4 do
+    p[I] := I mod 4 + 1;
+  for I := 1 to 4 do
+  begin
+    if a[I] = c then
+    begin
+      a[I] := 0;
+      for J := 1 to 4 do
+      begin
+        if p[J] = c then
+        begin
+          p[J] := p[I];
+          break
+        end;
+      end;
+      break
+    end;
+  end;
+  if a[1] = 0 then
+    TempHead := 2
+  else
+    TempHead := 1;
+  I := TempHead;
+  J := 1;
+  while p[I] <> TempHead do
+  begin
+    l[J] := a[I];
+    inc(J);
+    I := p[I];
+  end;
+end;
+
+
+procedure Sell(s, t: Integer; p: String);  //seller, target, selected property
+begin
+  Query := 'SELECT * FROM PROPERTY WHERE NAME='''+p+'''';
+  Form2.SQLQuery1.SQL.Text := Query;
+  Form2.SQLQuery1.Open;
+
+  {for I := Low(Player[s].Assets) to High(Player[s].Assets) do
+  begin
+    if p = Player[s].Assets[I] then
+    begin
+      for J := (I+1) to (Length(Player[s].Assets)-1) do
+        Player[s].Assets[J-1] := Player[s].Assets[J];
+        break
+    end;
+    break
+  end;
+
+  I := Player[s].Assets.IndexOf(p);
+  Player[s].Assets[Length(Player[s].Assets)-1] := nil;
+
+  Player[t].Assets[Length(Player[t].Assets)] := p;
+
+  Form2.StatList.Items.Add('Player '+s+' sold '+p+' to Player '+t+'.');}
+end;
+
+procedure Mortgage(s: Integer; p: String);
+begin
+  Query := 'SELECT * FROM PROPERTY WHERE PROPIN='''+p+'''';
+  Form2.SQLQuery1.SQL.Text := Query;
+  Form2.SQLQuery1.Open;
+
+  {for I := 0 to Length(Player[s].Assets)-1 do
+  begin
+    if p = Player[s].Assets[I] then
+    begin
+      for J := (I+1) to (Length(Player[s].Assets)-1) do
+        Player[s].Assets[J-1] := Player[s].Assets[J];
+        break
+    end;
+    break
+  end;
+  Player[s].Assets[Length(Player[s].Assets)-1] := nil; }
+end;
+
+procedure TForm2.YesClick(parameter: TObject);
+begin
+  //Sell(CurrPlay, LoadedArr[1], p);
+end;
+
+procedure TForm2.NoClick(parameter: TObject);
+begin
+  //Sell(CurrPlay, LoadedArr[2], p);
+end;
+
+procedure TForm2.AllClick(parameter: TObject);
+begin
+  //Sell(Currplay, LoadedArr[3], p);
+end;
+
+procedure TForm2.SellButtonClick(Sender: TObject);
+var
+  Selected, TempStr: String;
+  TempArr, TempArrPtr: array[1..4] of Integer;
+begin
+  if ListBox2.ItemIndex >= 0 then  //Check if a property is selected
+  begin
+    TempArrCompare(CurrPlay, TempArr, TempArrPtr, LoadedArr);
+    Selected := ListBox2.Items.Strings[ListBox2.ItemIndex];  //Get the selected item
+    MsgStr := 'Are you sure you want to sell '+Selected+'?';   //Confirmation
+    if MessageDlg(MsgStr, mtConfirmation, [mbYes, mbNo], 0, mbYes) = mrYes then
+    begin
+      CustomDlg := CreateMessageDialog('Which player do you want to sell it to?', mtInformation, [mbYes, mbNo, mbAll, mbCancel]);
+      //Asks player to choose the buyer
+      with CustomDlg do
+      begin
+        str(LoadedArr[1], TempStr);
+        (FindComponent('Yes') As TButton).OnClick := YesClick;  //Define the action after player clicks
+        (FindComponent('Yes') As TButton).Caption := 'Player '+TempStr;  //Replace default buttons with player indices
+        str(LoadedArr[2], TempStr);
+        (FindComponent('No') As TButton).OnClick := NoClick;
+        (FindComponent('No') As TButton).Caption := 'Player '+TempStr;
+        str(LoadedArr[3], TempStr);
+        (FindComponent('All') As TButton).OnClick := AllClick;
+        (FindComponent('All') As TButton).Caption := 'Player '+TempStr;
+        Show;
+      end;
+
+      {str(LoadedArr[1], TempStr);
+      Form4.Button1.Caption := TempStr;
+      str(LoadedArr[2], TempStr);
+      Form4.Button2.Caption := TempStr;
+      str(LoadedArr[3], TempStr);
+      Form4.Button2.Caption := TempStr;
+      Form4.Show  }
+    end;
+  end;
+end;
+
+procedure TForm2.FormCreate(Sender: TObject);
+begin
+  Form2.Panel7.Caption := 'The game begins.';
+  Form2.StatList.Items.Add('The game begins.');
+
+  CurrPlay := 1;
+
+  str(CurrPlay, PlayNumStr);
+  PlayNumPanel.Caption := PlayNumStr;
+
+  First := True;
+
+  ChanceInit(Chan, ChaHead, ChaTail); //initialize the decks
+  CommunInit(Comm, ComHead, ComTail);
+
+  for I := 1 to 4 do
+  begin
+    Player[I].Position := 0;
+    Player[I].Cash := 15000;
+    Player[I].Assets := TStringList.Create;  //initialize player info
+  end;
+
+  str(Player[1].Cash, CashStr);
+  CashPanel.Caption := CashStr;
+
+  squares := TObjectList<TStackPanel>.Create;
+  squares.AddRange([StackPanel1, StackPanel2, StackPanel3, StackPanel4,
+  StackPanel5, StackPanel6, StackPanel7, StackPanel8, StackPanel9,
+  StackPanel10, StackPanel11, StackPanel12, StackPanel13, StackPanel14,
+  StackPanel15, StackPanel16, StackPanel17, StackPanel18, StackPanel19,
+  StackPanel20, StackPanel21, StackPanel22, StackPanel23, StackPanel24,
+  StackPanel25, StackPanel26, StackPanel27, StackPanel28, StackPanel29,
+  StackPanel30, StackPanel31, StackPanel32, StackPanel33, StackPanel34,
+  StackPanel35, StackPanel36, StackPanel37, StackPanel38, StackPanel39,
+  StackPanel40]);  //Add the Stack Panels into a coordinate system
+
+  Land := TObjectList<TStackPanel>.Create;
+  Land.AddRange([StackPanel42, StackPanel43, StackPanel44, StackPanel45,
+  StackPanel46, StackPanel47, StackPanel48, StackPanel49, StackPanel50,
+  StackPanel51, StackPanel52, StackPanel53, StackPanel54, StackPanel55,
+  StackPanel56, StackPanel57, StackPanel58, StackPanel59, StackPanel60,
+  StackPanel61, StackPanel62, StackPanel63]); //Add the lands into a coordinate system
+
+  Tokens := TObjectList<TImage>.Create;
+  Tokens.AddRange([Image4, Image5, Image6, Image7]); //put the tokens in order
+
+  SQLConnection1.Params.Values['Database'] := GetCurrentDir+'\MonopolyDB.db';
+  SQLConnection1.Connected := True;
+
+  Form2.Show;
+
+  MainThread := TMainThread.Create;
+
+end;
+
+procedure TForm2.MortgageButtonClick(Sender: TObject);
+var
+  Selected: String;
+begin
+  if ListBox2.ItemIndex >= 0 then
+  begin
+    Selected := ListBox2.Items.Strings[ListBox2.ItemIndex];
+    MsgStr := 'Are you sure you want to mortgage '+Selected+'?';
+    if MessageDlg(MsgStr, mtConfirmation, [mbYes, mbNo], 0, mbYes) = mrYes then
+    begin
+      Mortgage(CurrPlay, Selected);
+    end;
+  end;
+end;
+
+procedure TMainThread.NextPlayer;
+begin
+  CurrPlay := CurrPlay mod 4 + 1;  //move on to next player
+  str(CurrPlay, PlayNumStr);
+  MsgStr := 'Player ' + PlayNumStr + '''s turn.';  //display message to player
+  if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+  begin
+    str(Player[CurrPlay].Cash, CashStr);
+    Form2.PlayNumPanel.Caption := PlayNumStr;
+    Form2.CashPanel.Caption := CashStr;    //update player panel
+    Form2.ListBox2.Items.Clear;
+    Form2.ListBox2.Items := Player[CurrPlay].Assets;  //update assets panel
+  end;
+end;
+
+procedure TMainThread.CheckCurrPos;
+var
+  Done: Boolean;
+  PName, PositionStr: String;
+begin
+  try
+    Done := False;
+    str(Player[CurrPlay].Position, PositionStr);
+
+    Query := 'SELECT * FROM PROPERTY WHERE PROPIN='+PositionStr;
+    Form2.SQLQuery1.SQL.Text := Query;
+    Form2.SQLQuery1.Open;         //query the database
+
+    PName := Form2.SQLQuery1.FieldByName('Name').AsString;
+    Form2.Panel7.Caption := 'You stepped on '+PName+'.';     //display the name of the space
+
+    if Form2.SQLQuery1.FieldByName('Special').AsInteger = 1 then  //check if the space is property
+    begin
+      Form2.Panel7.Caption := 'Special';
+      case Form2.SQLQuery1.FieldByName('District').AsString[1] of
+        'h': Community;
+        'c': Chance;
+        't': begin
+               if Form2.SQLQuery1.FieldByName('Name').AsString = 'Income Tax' then
+               begin
+                 if Player[CurrPlay].Cash * 0.1 > 2000 then
+                 begin
+                   MsgStr := 'Pay 10% of your cash as income tax';
+                   if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+                     Player[CurrPlay].Cash := Player[CurrPlay].Cash div 10 * 9;
+                 end
+                 else
+                 begin
+                   MsgStr := 'Pay $2000 as income tax';
+                   if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+                     Player[CurrPlay].Cash := Player[CurrPlay].Cash - 2000;
+                 end;
+                 //income tax
+               end
+               else
+               begin
+                 MsgStr := 'Pay $1000 as income tax';
+                   if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+                     Player[CurrPlay].Cash := Player[CurrPlay].Cash - 1000;
+                 //super tax
+               end;
+
+             end;
+        'r': Rail(Form2.SQLQuery1);
+        'u': Utility(Form2.SQLQuery1);
+        'p': begin
+               MsgStr := 'You landed on FREE PARKING. No action needed.';
+               if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+               
+             end;
+        'a': begin
+               MsgStr := 'You are visiting the jail. No action needed.';
+               if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+               
+             end;
+        'j': begin
+               MsgStr := 'Go directly to jail.';
+               if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+               begin
+                 if Player[CurrPlay].gooj then
+                 begin
+                   MsgStr := 'You have a GET OUT OF JAIL PASS. Click on it to use it.';
+                   if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+                   begin
+                     JailPassed := False;
+                     while not JailPassed do
+                       Application.ProcessMessages;
+                     JailPassed := False
+                   end;
+
+                 end
+                 else
+                 begin
+                   Tokens[CurrPlay - 1].SetParentComponent(Form2.StackPanel41);
+                   Player[CurrPlay].Jail := True;
+
+                   str(CurrPlay, PlayNumStr);
+                   Form2.StatList.Items.Add('Player '+PlayNumStr+' went to jail.')
+                 end;
+               end;
+             end;
+      end;
+    end
+    else
+    begin
+      if Form2.SQLQuery1.FieldByName('Owner').AsInteger = 0 then  //check if the land is bought
+      begin
+        Buy(Form2.SQLQuery1.FieldByName('Name').AsString, Form2.SQLQuery1.FieldByName('PropIn').AsString, Form2.SQLQuery1.FieldByName('Price').AsInteger);
+      end
+      else if Form2.SQLQuery1.FieldByName('Owner').AsInteger = CurrPlay then
+      begin
+        if Form2.SQLQuery1.FieldByName('Houses').AsInteger < 4 then
+        begin
+          AddHouse(Form2.SQLQuery1, 'house');
+        end
+        else if Form2.SQLQuery1.FieldByName('Houses').AsInteger = 4 then
+        begin
+          AddHouse(Form2.SQLQuery1, 'hotel');
+        end
+        else
+        begin
+          MsgStr := 'Your land is full.';
+          if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+
+        end;
+      end
+      else
+      begin
+        Rent(Form2.SQLQuery1);
+      end;
+
+    end;
+  finally
+    Form2.SQLQuery1.Close;
+  end;
+
+end;
+
+procedure Move;
+var position: Integer;
+begin
+  Player[CurrPlay].Position := (Player[CurrPlay].Position + re1 + re2);
+  //add the amount rolled to the player's position
+  if Player[CurrPlay].Position >= 40 then
+  begin
+    Player[CurrPlay].Cash := Player[CurrPlay].Cash + 2000;
+    //add $200 if player passes GO
+    str(Player[CurrPlay].Cash, CashStr);
+    Form2.CashPanel.Caption := CashStr;
+
+  end;
+  Player[CurrPlay].Position := Player[CurrPlay].Position mod 40;
+  Tokens[CurrPlay - 1].SetParentComponent(squares[Player[CurrPlay].Position]);
+  //put the token to the designated square
+
+  MainThread.CheckCurrPos;
+end;
+
+procedure TForm2.Button3Click(Sender: TObject);
+begin
+  MsgStr := 'Are you sure you want to leave?'; //display message to confirm exiting
+  if MessageDlg(MsgStr, mtWarning, [mbYes, mbNo], 0, mbNo) = mrYes then
+  begin
+    Query := 'UPDATE PROPERTY SET OWNER=0';
+    SQLQuery1.SQL.Text := Query;
+    SQLQuery1.ExecSQL();
+
+    Query := 'UPDATE PROPERTY SET HOUSES=0';
+    SQLQuery1.SQL.Text := Query;
+    SQLQuery1.ExecSQL();
+
+    TerminateThread(MainThread.Handle, 0);
+    Application.Terminate   //end the program
+  end
+end;
+
+procedure TForm2.Button4Click(Sender: TObject);
+var disstr1, disstr2, RollBtnStr: String;
+begin
+  re1 := random(6);  //get random number for both dice
+  re2 := random(6);
+  ImageList1.GetBitmap(re1, Image2.Picture.Bitmap); //display the corresponding dice
+  ImageList1.GetBitmap(re2, Image3.Picture.Bitmap);
+  inc(re1);
+  inc(re2);
+  str(re1, disstr1);
+  str(re2, disstr2);
+  RollBtnStr := 'Player ' + PlayNumStr + ' rolled ' + disstr1 + ' and ' + disstr2 + '.';
+  StatList.Items.Add(RollBtnStr);  //add result to the status panel
+  Form2.Panel7.Caption := 'You rolled ' + disstr1 + ' and ' + disstr2 + '.';
+  if not Player[CurrPlay].Jail then
+    Move()
+  else
+  begin
+    if re1 = re2 then
+    begin
+      MsgStr := 'You rolled doubles. Get out of jail and move according to the amount rolled.';
+      if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+      begin
+        Player[CurrPlay].Jail := False;
+        Player[CurrPlay].Position := 10;
+        Move
+      end;
+    end
+    else
+    begin
+      MsgStr := 'You did not roll doubles. Your turn ended.';
+      if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+
+    end;
+  end;
+
+  RollSignaled := True;
+
+  //RollHandle := Winapi.Windows.CreateEvent(nil, false, false, nil);
+
+  if First then
+  begin
+    First := False;
+    //MainThread := TMainThread.Create;
+    MainThread.Execute;
+  end;
+end;
+
+procedure TForm2.ChanImageClick(Sender: TObject);
+begin
+  Form2.Panel7.Caption := 'You got a CHANCE.';
+  ChanClicked := True;                //trigger the Chance procedure
+end;
+
+procedure TForm2.CommImageClick(Sender: TObject);
+begin
+  Form2.Panel7.Caption := 'You got a COMMUNITY CHEST.';
+  CommClicked := True;               //trigger the Community procedure
+end;
+
+procedure TMainThread.Chance;
+var Drawn, X: Integer;
+begin
+  ChanClicked := False;
+  MsgStr := 'You got a CHANCE! Draw from the deck.';
+  if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+  begin
+    Form2.ChanImage.Enabled := True;
+    while not ChanClicked do
+      Application.ProcessMessages;
+    ChanClicked := False;
+    Form2.ChanImage.Enabled := False;
+
+    Drawn := Chan[chahead];
+    case Drawn of
+      0: begin
+           MsgStr := 'Advance to GO and collect $2000.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+             Player[CurrPlay].Position := 0;
+             Tokens[CurrPlay - 1].SetParentComponent(squares[Player[CurrPlay].Position]);
+             Player[CurrPlay].Cash := Player[CurrPlay].Cash + 2000
+           end;
+         end;
+      1: begin
+           MsgStr := 'Advance to the nearest UTILITY. If unowned, you may buy it from the Bank. If owned, throw dice and pay owner a total 10 times the amount thrown.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+
+           end;
+         end;
+      2: begin
+           MsgStr := 'Advance token to the nearest Railroad and pay owner twice the rental to which he/she {he} is otherwise entitled. If Railroad is unowned, you may buy it from the Bank.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+
+           end;
+         end;
+      3: begin
+           MsgStr := 'Advance to Nathan Road. If you pass Go, collect $2000.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+             if Player[CurrPlay].Position > 11 then
+               Player[CurrPlay].Cash := Player[CurrPlay].Cash + 2000;
+             Player[CurrPlay].Position := 11;
+             Tokens[CurrPlay - 1].SetParentComponent(squares[11]);
+           end;
+         end;
+      4: begin
+           MsgStr := 'Bank pays you dividend of $500.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+             Player[CurrPlay].Cash := Player[CurrPlay].Cash +500;
+         end;
+      5: begin
+         end;
+      6: begin
+           MsgStr := 'Get out of jail free.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+             Player[CurrPlay].gooj := True;
+             str(CurrPlay, PlayNumStr);
+             Form2.StatList.Items.Add('Player '+PlayNumStr+' got a GET OUT OF JAIL PASS.');
+           end;
+         end;
+      7: begin
+           MsgStr := 'Go back 3 spaces.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+             Player[CurrPlay].Position := Player[CurrPlay].Position - 3;
+             Tokens[CurrPlay - 1].SetParentComponent(squares[Player[CurrPlay].Position]);
+           end;
+         end;
+      8: begin
+           MsgStr := 'Go directly to jail.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+             if Player[CurrPlay].gooj then
+             begin
+               MsgStr := 'You have a GET OUT OF JAIL PASS. Click on it to use it.';
+               if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+               begin
+                 JailPassed := False;
+                 while not JailPassed do
+                   Application.ProcessMessages;
+                 JailPassed := False
+               end;
+             end
+             else
+             begin
+               Tokens[CurrPlay - 1].SetParentComponent(Form2.StackPanel41);
+               Player[CurrPlay].Jail := True;
+
+               str(CurrPlay, PlayNumStr);
+               Form2.StatList.Items.Add('Player '+PlayNumStr+' went to jail.')
+             end;
+           end;
+
+         end;
+      9: begin
+           MsgStr := 'Make general repairs on all your property: For each house pay $250, For each hotel $1000.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+
+           end;
+         end;
+     10: begin
+           MsgStr := 'Pay poor tax of $150.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+             Player[CurrPlay].Cash := Player[CurrPlay].Cash - 150;
+           end;
+         end;
+     11: begin
+           X := CurrPlay mod 4 + 1;
+           MsgStr := 'You have been elected Chairman of the Board. Pay each player $500.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+             while X <> CurrPlay do
+             begin
+               Player[CurrPlay].Cash := Player[CurrPlay].Cash - 500;
+               Player[X].Cash := Player[X].Cash + 500;
+               X := X mod 4 + 1;
+             end;
+           end;
+         end;
+     12: begin
+           MsgStr := 'Your loan matures. Collect $1500.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+             Player[CurrPlay].Cash := Player[CurrPlay].Cash + 1500;
+           end;
+         end;
+     13: begin
+           MsgStr := 'You have won a crossword competition. Collect $1000.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+             Player[CurrPlay].Cash := Player[CurrPlay].Cash + 1000;
+           end;
+         end;
+    end;
+    chahead := (chahead + 1) mod 16
+  end;
+end;
+
+procedure TMainThread.Community;
+var Drawn: Integer;
+begin
+  CommClicked := False;
+  MsgStr := 'You got a COMMUNITY CHEST! Draw from the deck.';
+  if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+  begin
+    Form2.CommImage.Enabled := True;
+  end;
+  while not CommClicked do
+    Application.ProcessMessages;
+  CommClicked := False;
+
+  Drawn := Comm[ComHead];
+  case Drawn of
+    0: begin
+         MsgStr := 'Advance to GO and collect $2000.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+             Player[CurrPlay].Position := 0;
+             Tokens[CurrPlay - 1].SetParentComponent(squares[Player[CurrPlay].Position]);
+             Player[CurrPlay].Cash := Player[CurrPlay].Cash + 2000
+           end;
+       end;
+    1: begin
+         MsgStr := 'Bank error in your favour. Collect $2000.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           Player[CurrPlay].Cash := Player[CurrPlay].Cash + 2000;
+       end;
+    2: begin
+         MsgStr := 'Doctor fees. Pay $500';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           Player[CurrPlay].Cash := Player[CurrPlay].Cash - 500;
+       end;
+    3: begin
+         MsgStr := 'Get out of jail free.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+             Player[CurrPlay].gooj := True;
+             str(CurrPlay, PlayNumStr);
+             Form2.StatList.Items.Add('Player '+PlayNumStr+' got a GET OUT OF JAIL PASS.');
+           end;
+       end;
+    4: begin
+         MsgStr := 'Go directly to jail.';
+           if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           begin
+             if Player[CurrPlay].gooj then
+             begin
+               MsgStr := 'You have a GET OUT OF JAIL PASS. Click on it to use it.';
+               if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+               begin
+                 JailPassed := False;
+                 while not JailPassed do
+                   Application.ProcessMessages;
+                 JailPassed := False
+               end;
+             end
+             else
+             begin
+               Tokens[CurrPlay - 1].SetParentComponent(Form2.StackPanel41);
+               Player[CurrPlay].Jail := True;
+
+               str(CurrPlay, PlayNumStr);
+               Form2.StatList.Items.Add('Player '+PlayNumStr+' went to jail.')
+             end;
+           end;
+       end;
+    5: begin
+         MsgStr := 'From sale of stock you get $500.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           Player[CurrPlay].Cash := Player[CurrPlay].Cash + 500;
+       end;
+    6: begin
+         MsgStr := 'Grand Opera Night. Collect $500 from every player for opening night seats.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+
+       end;
+    7: begin
+         MsgStr := 'Holiday Fund matures. Collect $1000.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           Player[CurrPlay].Cash := Player[CurrPlay].Cash + 1000;
+       end;
+    8: begin
+         MsgStr := 'Income tax refund. Collect $200.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           Player[CurrPlay].Cash := Player[CurrPlay].Cash + 200;
+       end;
+    9: begin
+         MsgStr := 'It''s your birthaday. Collect $100 from every player.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+
+       end;
+   10: begin
+         MsgStr := 'Life insurance matures. Collect $1000.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           Player[CurrPlay].Cash := Player[CurrPlay].Cash + 1000;
+       end;
+   11: begin
+         MsgStr := 'Hospital fees. Pay $500.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           Player[CurrPlay].Cash := Player[CurrPlay].Cash - 500;
+       end;
+   12: begin
+         MsgStr := 'School fees. Pay $500.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           Player[CurrPlay].Cash := Player[CurrPlay].Cash - 500;
+       end;
+   13: begin
+         MsgStr := 'Receive $250 consultancy fee.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           Player[CurrPlay].Cash := Player[CurrPlay].Cash + 250;
+       end;
+   14: begin
+         MsgStr := 'You are assessed for street repairs: Pay $400 per house and $1150 per hotel you own.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+
+       end;
+   15: begin
+         MsgStr := 'You have won second prize in a beauty contest. Collect $100.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           Player[CurrPlay].Cash := Player[CurrPlay].Cash + 100;
+       end;
+   16: begin
+         MsgStr := 'You inherit $1000.';
+         if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+           Player[CurrPlay].Cash := Player[CurrPlay].Cash + 1000;
+       end;
+   17: begin
+         MsgStr := 'Pay $100 or draw a CHANCE card.';
+       end;
+  end;
+  comhead := comhead mod 17 + 1
+end;
+
+procedure TMainThread.CheckJail;
+begin
+  MsgStr := 'You are currently in jail.';
+  if MessageDlg(MsgStr, mtInformation, [mbOk], 0, mbOk) = mrOk then
+  begin
+    RollSignaled := False;
+    while not RollSignaled do
+      Application.ProcessMessages;
+    RollSignaled := False
+  end;
+end;
+
+procedure TMainThread.EndGame;
+begin
+  MsgStr := 'You are bankrupt.';
+  if MessageDlg(MsgStr, mtWarning, [mbOk], 0, mbOk) = mrOk then
+  begin
+    MsgStr := 'This game ends.';
+    if MessageDlg(MsgStr, mtWarning, [mbOk], 0, mbOk) = mrOk then
+    begin
+      Form2.Hide();
+      {Form3.Show()  }
+    end
+  end
+end;
+
+procedure TMainThread.CheckBankrupt;
+begin
+  if Player[CurrPlay].Cash <= 0 then
+  begin
+    if Player[CurrPlay].Assets[1] = '' then
+      Bankruptcy := True
+    else begin
+      MsgStr := 'You ran out of cash. Sell or mortgage your property.';
+      if MessageDlg(MsgStr, mtWarning, [mbOk], 0, mbOk) = mrOk then
+
+    end;
+  end;
+end;
+
+procedure TMainThread.Execute;
+begin
+  repeat
+    if Player[CurrPlay].Jail then
+      CheckJail
+    else
+    begin
+      while not RollSignaled do
+        Application.ProcessMessages;
+      RollSignaled := False;
+
+    end;
+
+    NextPlayer;
+    CheckBankrupt;
+
+  until Bankruptcy;
+
+  EndGame;
+
+end;
+
+end.

@@ -1,0 +1,17 @@
+program SBA_Monopoly;
+
+uses
+  Vcl.Forms,
+  MenuDelphi in 'MenuDelphi.pas' {Form3},
+  ChooseToken in 'ChooseToken.pas' {Form4},
+  Chessboard in 'Chessboard.pas' {Form2};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TForm3, Form3);
+  Application.CreateForm(TForm4, Form4);
+  Application.Run;
+end.

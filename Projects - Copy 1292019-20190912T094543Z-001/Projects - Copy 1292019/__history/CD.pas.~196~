@@ -1,0 +1,230 @@
+unit CD;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls,
+  Vcl.Imaging.jpeg, Vcl.Menus, System.Generics.Collections, Vcl.WinXPanels,
+  System.ImageList, Vcl.ImgList, Data.DbxSqlite, Data.DB, Data.SqlExpr,
+  Data.FMTBcd, Vcl.Imaging.pngimage;
+
+type
+{  TAssetsCard = class(TStackPanel)
+    Label5: TLabel;
+    AssetsMem: TMemo;
+    MortButton: TButton;
+    public
+      constructor Create();
+  end;
+}
+
+  TForm2 = class(TForm)
+    Panel1: TPanel;
+    Panel2: TPanel;
+    Label1: TLabel;
+    PlayMem: TMemo;
+    Label2: TLabel;
+    CashMem: TMemo;
+    Label3: TLabel;
+    Panel3: TPanel;
+    ManButton: TButton;
+    ExitButton: TButton;
+    Panel4: TPanel;
+    RollButton: TButton;
+    Dice2: TImage;
+    Label4: TLabel;
+    ScrollBox1: TScrollBox;
+    Image1: TImage;
+    StackPanel1: TStackPanel;
+    StackPanel2: TStackPanel;
+    StackPanel3: TStackPanel;
+    StackPanel4: TStackPanel;
+    StackPanel5: TStackPanel;
+    StackPanel6: TStackPanel;
+    StackPanel7: TStackPanel;
+    StackPanel8: TStackPanel;
+    StackPanel9: TStackPanel;
+    StackPanel10: TStackPanel;
+    StackPanel11: TStackPanel;
+    StackPanel12: TStackPanel;
+    StackPanel13: TStackPanel;
+    StackPanel14: TStackPanel;
+    StackPanel15: TStackPanel;
+    StackPanel16: TStackPanel;
+    StackPanel17: TStackPanel;
+    StackPanel18: TStackPanel;
+    StackPanel19: TStackPanel;
+    StackPanel20: TStackPanel;
+    StackPanel21: TStackPanel;
+    StackPanel22: TStackPanel;
+    StackPanel23: TStackPanel;
+    StackPanel24: TStackPanel;
+    StackPanel25: TStackPanel;
+    StackPanel26: TStackPanel;
+    StackPanel27: TStackPanel;
+    StackPanel28: TStackPanel;
+    StackPanel29: TStackPanel;
+    StackPanel30: TStackPanel;
+    StackPanel31: TStackPanel;
+    StackPanel32: TStackPanel;
+    StackPanel33: TStackPanel;
+    StackPanel34: TStackPanel;
+    StackPanel35: TStackPanel;
+    StackPanel36: TStackPanel;
+    StackPanel37: TStackPanel;
+    StackPanel38: TStackPanel;
+    StackPanel39: TStackPanel;
+    StackPanel40: TStackPanel;
+    ImageList1: TImageList;
+    Dice1: TImage;
+    SQLConnection1: TSQLConnection;
+    SQLQuery1: TSQLQuery;
+    Panel5: TPanel;
+    CurrStat: TMemo;
+    Label5: TLabel;
+    Image2: TImage;
+    Image3: TImage;
+    Image4: TImage;
+    Image5: TImage;
+    CurrStatBtn: TButton;
+    StatList: TListBox;
+    Label6: TLabel;
+    GOOJBtn: TButton;
+    procedure RollButtonClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+    playrec = record
+    cash: integer;
+    position: integer;
+    assets: array of string
+  end;
+
+  playarr = array[1..4] of playrec;
+
+var
+  Form2: TForm2;
+  player : playarr;
+  I, CurrPlayer: integer;
+
+  chancearr: array[1..20] of integer;
+  communarr: array[1..20] of integer;
+  squares: TObjectList<TStackPanel>;
+  tokens: TObjectList<TImage>;
+
+  chead, ctail, hhead, htail: integer;
+  re1, re2: integer;
+
+implementation
+
+{$R *.dfm}
+{constructor TAssetsCard.Create();
+begin
+  Label5.Caption :=
+  MortButton.Caption := 'Mortgage'
+end; }
+
+procedure swap(x, y: integer);
+var t: Integer;
+begin
+  t := x;
+  x := y;
+  y := t
+end;
+
+procedure permute(var c: array of integer);
+var i, count: Integer;
+begin
+  count := length(c);
+  for i := 0 to (count - 2) do
+    swap(c[i], c[random(count - i)])   //swap the elements randomly
+end;
+
+procedure chanceinit(var c: array of integer; head, tail: integer);
+var i: Integer;
+begin
+  head := 0;  //initialize the head and tail of the circular queue
+  tail := 15;
+  for i := 0 to 15 do  //initialize the deck in numeric order
+    c[i] := i;
+  permute(c)  //shuffle the deck
+end;
+
+procedure communinit(var h: array of integer; var head, tail: integer);
+begin
+  head := 0;  //initialize the head and tail of the circular queue
+  tail := 16;
+  for i := 0 to 16 do  //initialize the deck in numeric order
+    h[i] := i;
+  permute(h)  //shuffle the deck
+end;
+
+procedure TForm2.FormCreate(Sender: TObject);
+begin
+  Form2.StatList.Items.Add('The game begins.');
+
+  for I := 1 to 4 do
+    begin
+      player[I].cash := 1500;
+      player[I].position := 0
+    end;
+
+  chanceinit(chancearr, chead, ctail);
+  communinit(communarr, hhead, htail);
+
+  squares := TObjectList<TStackPanel>.Create();
+  squares.AddRange([Form2.StackPanel1, Form2.StackPanel2, Form2.StackPanel3,
+  Form2.StackPanel4, Form2.StackPanel5, Form2.StackPanel6, Form2.StackPanel7,
+  Form2.StackPanel8, Form2.StackPanel9, Form2.StackPanel10, Form2.StackPanel11,
+  Form2.StackPanel12, Form2.StackPanel13, Form2.StackPanel14, Form2.StackPanel15,
+  Form2.StackPanel16, Form2.StackPanel17, Form2.StackPanel18, Form2.StackPanel19,
+  Form2.StackPanel20, Form2.StackPanel21, Form2.StackPanel22, Form2.StackPanel23,
+  Form2.StackPanel24, Form2.StackPanel25, Form2.StackPanel26, Form2.StackPanel27,
+  Form2.StackPanel28, Form2.StackPanel29, Form2.StackPanel30, Form2.StackPanel31,
+  Form2.StackPanel32, Form2.StackPanel33, Form2.StackPanel34, Form2.StackPanel35,
+  Form2.StackPanel36, Form2.StackPanel37, Form2.StackPanel38, Form2.StackPanel39,
+  Form2.StackPanel40]);     //map the stack panels onto a coordinate system
+
+  tokens := TObjectList<TImage>.Create;
+  tokens.AddRange([Image2, Image3, Image4, Image5]); //store the tokens in a list
+end;
+
+procedure Move;
+var destination: Integer;
+begin
+  destination := re1 + re2;  //set the distance required for the token
+  Form2.Image5.SetParentComponent(squares[(1 + destination) mod 40]);  //move the tokens
+end;
+
+procedure TForm2.RollButtonClick(Sender: TObject);
+var RollBtnStr, disstr1, disstr2: string;
+begin
+  Sleep(100);
+  re1 := random(6);    //roll the first dice
+  Form2.ImageList1.GetBitmap(re1, Form2.Dice1.Picture.Bitmap); //display the corresponding visual
+  re2 := random(6);   //roll the second dice
+  Form2.ImageList1.GetBitmap(re2, Form2.Dice2.Picture.Bitmap); //display the corresponding visual
+  inc(re1);
+  inc(re2);
+  Form2.RollButton.Enabled := True; //reset the button for more clicks
+
+  {Image5.SetParentComponent(StackPanel2);}
+  Move;
+  CashMem.Lines.SetText('150');
+  str(re1, disstr1);
+  str(re2, disstr2);
+  RollBtnStr := 'The player rolled ' + disstr1 + ' and ' + disstr2 +'.';
+  StatList.Items.Add(RollBtnStr)
+end;
+
+procedure CheckCurrPos(p: playrec; a: integer);
+begin
+  p
+end;
+
+end.

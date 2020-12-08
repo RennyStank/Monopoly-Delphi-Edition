@@ -1,0 +1,99 @@
+program SBA;
+
+uses
+  Vcl.Forms,
+  CD in 'CD.pas' {Form1};
+
+{$R *.res}
+type
+  playrec = record
+    token: char;
+    cash: integer;
+    position: integer;
+    assets: array of string
+  end;
+
+  proprec = record
+    name: string;
+    district: string;
+    position: integer;
+    special: byte;
+    bought: boolean;
+    owner: integer;
+    houses: integer;
+    hotel: byte;
+    price: integer;
+    rent: array[0..5] of integer;
+    hpri: integer;
+    func: char;
+    mortgage: integer
+  end;
+
+  playarr = array[1..4] of playrec;
+  proparr = array[0..39] of proprec;
+
+var
+  player : playarr;
+  prop : proparr;
+
+procedure playerinit(var a : playarr);
+var i : integer;
+begin
+  for i := 1 to 4 do
+  begin
+    a[i].token := 'z';
+    a[i].position := 0;
+    a[i].cash := 1500;
+  end
+end;
+
+procedure propinit(var p : proparr);
+var i, j : integer; t : text; discode, col : char; pr, re, rea, reb, rec, red, ree, mor : string[4];
+begin
+  assign(t, 'districts.txt');
+  reset(t);
+  for i := 1 to 40 do
+  begin
+    p[i].position := i - 1;
+    p[i].bought := false;
+    p[i].houses := 0;
+    p[i].hotel := 0;
+    readln(t, p[i].special, discode, p[i].name, pr, col, re, col, rea, col, reb, col, rec, col, red, col, ree, col, mor);
+    if p[i].special = 0 then
+    begin
+      case discode of
+        'B' : p[i].district := 'brown';
+        'A' : p[i].district := 'aqua';
+        'P' : p[i].district := 'purple';
+        'F' : p[i].district := 'fuchsia';
+        'R' : p[i].district := 'red';
+        'Y' : p[i].district := 'yellow';
+        'G' : p[i].district := 'green';
+        'N' : p[i].district := 'navy blue'
+      end
+    end
+    else
+      p[i].func := discode
+  end;
+  p[i].price := val(pr);
+  p[i].rent[0] := val(re);
+  p[i].rent[1] := val(rea);
+  p[i].rent[2] := val(reb);
+  p[i].rent[3] := val(rec);
+  p[i].rent[4] := val(red);
+  p[i].rent[5] := val(ree);
+  p[i].mortgage := val(mor);
+  case discode of
+       'B', 'A' : p[i].hpri := 50;
+       'P', 'F' : p[i].hpri := 100;
+       'R', 'Y' : p[i].hpri := 150;
+       'G', 'N' : p[i].hpri := 200
+  end
+end;
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TForm2, Form2);
+  Application.Run;
+end.

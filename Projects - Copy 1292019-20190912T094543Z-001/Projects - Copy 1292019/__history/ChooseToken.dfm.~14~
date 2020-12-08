@@ -1,0 +1,118 @@
+object Form4: TForm4
+  Left = 0
+  Top = 0
+  Caption = 'Form4'
+  ClientHeight = 460
+  ClientWidth = 661
+  Color = clGradientActiveCaption
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Tahoma'
+  Font.Style = []
+  OldCreateOrder = False
+  PixelsPerInch = 96
+  TextHeight = 13
+  object Label1: TLabel
+    Left = 192
+    Top = 24
+    Width = 258
+    Height = 24
+    Caption = 'CUSTOMIZE YOUR TOKEN'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -20
+    Font.Name = 'Tahoma'
+    Font.Style = [fsBold]
+    ParentFont = False
+  end
+  object Label2: TLabel
+    Left = 64
+    Top = 143
+    Width = 39
+    Height = 13
+    Caption = 'Player 1'
+  end
+  object Label3: TLabel
+    Left = 224
+    Top = 143
+    Width = 39
+    Height = 13
+    Caption = 'Player 2'
+  end
+  object Label4: TLabel
+    Left = 384
+    Top = 143
+    Width = 39
+    Height = 13
+    Caption = 'Player 3'
+  end
+  object Label5: TLabel
+    Left = 544
+    Top = 143
+    Width = 39
+    Height = 13
+    Caption = 'Player 4'
+  end
+  object Label6: TLabel
+    Left = 39
+    Top = 405
+    Width = 570
+    Height = 16
+    Caption = 
+      'Choose a colour and shape to represent yourself, then click "Con' +
+      'tinue" when all 4 players are done.'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -13
+    Font.Name = 'Tahoma'
+    Font.Style = []
+    ParentFont = False
+  end
+  object Button1: TButton
+    Left = 292
+    Top = 427
+    Width = 75
+    Height = 25
+    Caption = 'Continue'
+    TabOrder = 0
+    OnClick = Button1Click
+  end
+  object ListBox1: TListBox
+    Left = 24
+    Top = 184
+    Width = 121
+    Height = 97
+    ItemHeight = 13
+    Items.Strings = (
+      'Shoe'
+      'Litter Bin'
+      'Car'
+      'Ship')
+    TabOrder = 1
+  end
+  object ListBox2: TListBox
+    Left = 176
+    Top = 184
+    Width = 121
+    Height = 97
+    ItemHeight = 13
+    TabOrder = 2
+  end
+  object ListBox3: TListBox
+    Left = 329
+    Top = 184
+    Width = 121
+    Height = 97
+    ItemHeight = 13
+    TabOrder = 3
+  end
+  object ListBox4: TListBox
+    Left = 504
+    Top = 184
+    Width = 121
+    Height = 97
+    ItemHeight = 13
+    TabOrder = 4
+  end
+end

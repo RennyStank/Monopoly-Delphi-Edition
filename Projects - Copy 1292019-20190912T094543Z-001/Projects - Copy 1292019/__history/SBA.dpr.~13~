@@ -1,0 +1,29 @@
+program SBA;
+
+uses
+  Vcl.Forms, FMX.Media, System.Classes,
+  CD in 'CD.pas' {Form1};
+
+{$R *.res}
+type
+  MusicThread = class(TThread)
+    protected
+
+  end;
+
+var
+  MediaPlayer1: TMediaPlayer;
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TForm2, Form2);
+  Application.Run;
+
+  MediaPlayer1.FileName := 'D:\Duke Ellington - Take the a train.mp3';
+  MediaPlayer1.Create();
+  while True do
+    begin
+      MediaPlayer1.Play;
+    end;
+end.
